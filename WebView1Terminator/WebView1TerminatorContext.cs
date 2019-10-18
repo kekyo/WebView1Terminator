@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Windows.Forms;
 
@@ -10,6 +11,9 @@ namespace WebView1Terminator
 {
     public sealed class WebView1TerminatorContext : ApplicationContext
     {
+        private static readonly string title =
+            $"WebView1 terminator {typeof(WebView1TerminatorContext).Assembly.GetName().Version}";
+
         private readonly NotifyIcon trayIcon;
 
         public WebView1TerminatorContext()
@@ -20,6 +24,14 @@ namespace WebView1Terminator
                 Icon = icon,
                 ContextMenu = new ContextMenu(new MenuItem[] {
                     new MenuItem("Terminate WebView1", TerminateProcesses),
+                    new MenuItem("About...", (s, e) =>
+                    {
+                        MessageBox.Show(
+                            "WebView1 terminator - WPF WebView1 stub process terminator utility.\r\nCopyright (c) 2019 Kouji Matsui.\r\nhttps://github.com/kekyo/WebView1Terminator\r\nLicense under Apache-v2",
+                            title,
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Information);
+                    }),
                     new MenuItem("Exit", (s, e) =>
                     {
                         trayIcon.Visible = false;
@@ -28,7 +40,7 @@ namespace WebView1Terminator
                 }),
                 Visible = true
             };
-            trayIcon.Text = "WebView1 terminator";
+            trayIcon.Text = title;
             trayIcon.DoubleClick += TerminateProcesses;
         }
 
@@ -54,11 +66,19 @@ namespace WebView1Terminator
 
             if ((count >= 1) || (failed >= 1))
             {
-                MessageBox.Show($"Terminated {count}/{count + failed} processes.", "WebView1 terminator", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                MessageBox.Show(
+                    $"Terminated {count}/{count + failed} processes.",
+                    title,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Exclamation);
             }
             else
             {
-                MessageBox.Show($"WebView1 related process not found.", "WebView1 terminator", MessageBoxButtons.OK, MessageBoxIcon.Question);
+                MessageBox.Show(
+                    $"WebView1 related process not found.",
+                    title,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Question);
             }
         }
     }
