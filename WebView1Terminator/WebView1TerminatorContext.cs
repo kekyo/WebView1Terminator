@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Management;
 using System.Reflection;
 using System.Text;
 using System.Windows.Forms;
@@ -48,19 +49,32 @@ namespace WebView1Terminator
         {
             var count = 0;
             var failed = 0;
-            foreach (var process in Process.GetProcesses().
-                Where(process =>
-                    process.StartInfo.Arguments.Contains("-ServerName:Windows.Internal.WebView.OopWebViewServer") ||
-                    process.StartInfo.Arguments.Contains("Win32WebViewHost.exe")))
+
+            using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_Process"))
             {
-                try
+                using (var objects = searcher.Get())
                 {
-                    process.Kill();
-                    count++;
-                }
-                catch
-                {
-                    failed++;
+                    foreach (var process in
+                        from obj in objects.Cast<ManagementBaseObject>()
+                        let properties = obj.Properties.Cast<PropertyData>().ToDictionary(data => data.Name, data => data.Value)
+                        let argument = (properties.TryGetValue("CommandLine", out var value) ? value?.ToString().ToLowerInvariant() : null) ?? string.Empty
+                        where
+                            argument.Contains("-servername:windows.internal.webview.oopwebviewserver") ||
+                            argument.Contains("win32webviewhost.exe")
+                        let process = int.TryParse(obj.GetPropertyValue("ProcessId")?.ToString() ?? string.Empty, out var id) ? Process.GetProcessById(id) : null
+                        where process != null
+                        select process)
+                    {
+                        try
+                        {
+                            process.Kill();
+                            count++;
+                        }
+                        catch
+                        {
+                            failed++;
+                        }
+                    }
                 }
             }
 
