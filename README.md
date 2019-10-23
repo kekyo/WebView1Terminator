@@ -12,7 +12,7 @@ This utility will terminate all WebView1 zombie processes (included not zombies 
 
 # How to use
 
-Download built binary (net45): [WebView1Terminator-1.0.2.zip](https://github.com/kekyo/WebView1Terminator/releases/download/1.0.2/WebView1Terminator-1.0.2.zip)
+Download built binary (net45): [WebView1Terminator-1.0.4.zip](https://github.com/kekyo/WebView1Terminator/releases/download/1.0.4/WebView1Terminator-1.0.4.zip)
 
 Easy, double-click system tray icon or click context menu.
 
