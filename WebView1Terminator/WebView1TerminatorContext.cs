@@ -1,11 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Microsoft.Win32;
+using System;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Management;
-using System.Reflection;
-using System.Text;
 using System.Windows.Forms;
 
 namespace WebView1Terminator
@@ -19,30 +18,81 @@ namespace WebView1Terminator
 
         public WebView1TerminatorContext()
         {
-            var icon = new Icon(this.GetType().Assembly.GetManifestResourceStream("WebView1Terminator.App.ico"), 64, 64);
+            var icon = new Icon(this.GetType().Assembly.GetManifestResourceStream("WebView1Terminator.App.ico"));
+
+            var contextMenu = new ContextMenuStrip();
+            contextMenu.Items.Add("Terminate WebView1", new Icon(icon, new Size(16, 16)).ToBitmap(), TerminateProcesses);
+            contextMenu.Items.Add("-");
+            AddRunAtLogonMenu(contextMenu);
+            contextMenu.Items.Add("-");
+            contextMenu.Items.Add("About...",  null, (s, e) =>
+            {
+                MessageBox.Show(
+                    "WebView1 terminator - WPF WebView1 stub process terminator utility.\r\nCopyright (c) 2019 Kouji Matsui.\r\nhttps://github.com/kekyo/WebView1Terminator\r\nLicense under Apache-v2",
+                    title,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            });
+            contextMenu.Items.Add("Exit", null, (s, e) =>
+            {
+                trayIcon.Visible = false;
+                Application.Exit();
+            });
+
             trayIcon = new NotifyIcon()
             {
                 Icon = icon,
-                ContextMenu = new ContextMenu(new MenuItem[] {
-                    new MenuItem("Terminate WebView1", TerminateProcesses),
-                    new MenuItem("About...", (s, e) =>
-                    {
-                        MessageBox.Show(
-                            "WebView1 terminator - WPF WebView1 stub process terminator utility.\r\nCopyright (c) 2019 Kouji Matsui.\r\nhttps://github.com/kekyo/WebView1Terminator\r\nLicense under Apache-v2",
-                            title,
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Information);
-                    }),
-                    new MenuItem("Exit", (s, e) =>
-                    {
-                        trayIcon.Visible = false;
-                        Application.Exit();
-                    })
-                }),
+                ContextMenuStrip = contextMenu,
                 Visible = true
             };
             trayIcon.Text = title;
             trayIcon.DoubleClick += TerminateProcesses;
+        }
+
+        private void AddRunAtLogonMenu(ContextMenuStrip contextMenu)
+        {
+            var runAtLogon = (ToolStripMenuItem)contextMenu.Items.Add("Run at logon");
+            runAtLogon.CheckOnClick = true;
+
+            var runPath = Path.GetFullPath(new Uri(this.GetType().Assembly.CodeBase, UriKind.RelativeOrAbsolute).LocalPath);
+
+            try
+            {
+                using (var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", false))
+                {
+                    var path = key.GetValue("WebView1Terminator") as string ?? string.Empty;
+                    runAtLogon.Checked = Path.GetFullPath(path) == runPath;
+                }
+            }
+            catch
+            {
+            }
+
+            runAtLogon.CheckedChanged += (s, e) =>
+            {
+                try
+                {
+                    using (var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true))
+                    {
+                        if (runAtLogon.Checked)
+                        {
+                            key.SetValue("WebView1Terminator", runPath);
+                        }
+                        else
+                        {
+                            key.DeleteValue("WebView1Terminator", false);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        $"Cannot set run at logon feature: {ex.Message}",
+                        title,
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Exclamation);
+                }
+            };
         }
 
         private static void TerminateProcesses(object sender, EventArgs e)
